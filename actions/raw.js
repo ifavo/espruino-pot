@@ -110,7 +110,7 @@ exports.rawCount = {
 			.count()
 			.then(function(count) {
 				if (!count) {
-					getError("raw data not not be counted");
+					countError("raw data not not be counted");
 					connection.rawConnection.responseHttpCode = 404;
 					return next(connection, true);
 				}
