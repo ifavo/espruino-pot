@@ -1,1 +1,4 @@
 store/*.sqlite
+log/*
+node_modules
+pids/*
