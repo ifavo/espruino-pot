@@ -1,0 +1,164 @@
+<!DOCTYPE>
+<html>
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <body>
+  <div class="container-fluid">
+   <div class="row">
+    <b>Temperature</b>
+    <div class="col-md-12"><canvas id="chart1" width="800" height="400"></canvas></div>
+   </div>
+   <div class="row">
+    <b>Humidity (%)</b>
+    <div class="col-md-12"><canvas id="chart2" width="800" height="400"></canvas></div>
+   </div>
+   <div class="row">
+    <b>Brightness (Lux)</b>
+    <div class="col-md-12"><canvas id="chart3" width="800" height="400"></canvas></div>
+   </div>
+  </div>
+
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+  <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+  <script src="//cdn.bootcss.com/Chart.js/0.2.0/Chart.js"></script>
+  <script>
+	var QueryString = function () {
+	  // This function is anonymous, is executed immediately and 
+	  // the return value is assigned to QueryString!
+	  var query_string = {};
+	  var query = window.location.search.substring(1);
+	  var vars = query.split("&");
+	  for (var i=0;i<vars.length;i++) {
+		var pair = vars[i].split("=");
+			// If first entry with this name
+		if (typeof query_string[pair[0]] === "undefined") {
+		  query_string[pair[0]] = pair[1];
+			// If second entry with this name
+		} else if (typeof query_string[pair[0]] === "string") {
+		  var arr = [ query_string[pair[0]], pair[1] ];
+		  query_string[pair[0]] = arr;
+			// If third or later entry with this name
+		} else {
+		  query_string[pair[0]].push(pair[1]);
+		}
+	  } 
+		return query_string;
+	} ();
+	
+	var historyLen = 0;
+	var historyData = [];
+	var historyId = 0;
+	var historyMaxData = 1000;
+	var potServer = QueryString.server || "";
+
+
+	$.getJSON(potServer + "/api/raw/count", function (res) {
+		if ( res && res.count) {
+			historyLen = res.count;
+			historyId = (historyLen > historyMaxData) ? historyLen - historyMaxData : 0;
+			fetchHistory();
+		}
+	});
+
+	function fetchHistory () {
+   		historyId++;
+		$.getJSON(potServer + "/api/raw/get", {id: historyId}, function (res) {
+			if ( res && res.raw ) {
+				try {
+					var data = JSON.parse(res.raw.packet);
+
+					historyData.push(data);
+					if ( historyId >= historyLen ) {
+						renderData();
+					}
+					else {
+						renderData()
+						fetchHistory();
+					}
+				}
+				catch (e) {
+					fetchHistory();
+				}
+
+			}
+			else {
+				fetchHistory();
+			}
+		});
+	}
+   
+	var chartIndex = 0;
+	function renderData() {
+		var data = {
+			labels: [],
+			datasets: [
+			{
+				label: "Temperature",
+				fillColor: "rgba(151,187,205,0.2)",
+				strokeColor: "rgba(151,187,205,1)",
+				pointColor: "rgba(151,187,205,1)",
+				pointStrokeColor: "#fff",
+				pointHighlightFill: "#fff",
+				pointHighlightStroke: "rgba(151,187,205,1)",
+				data: []
+			}
+		  ]
+		};
+		for ( var i in historyData ) {
+			data.datasets[0].data.push(Number(historyData[i].tmp));
+			data.labels.push(i);
+			chartIndex++;
+		}
+		var ctx = document.getElementById("chart1").getContext("2d");
+		new Chart(ctx).Line(data, {animation: false, showTooltips: true,});
+
+		var data = {
+			labels: [],
+			datasets: [
+			{
+				label: "Humidity",
+				fillColor: "rgba(247,70,74,0.2)",
+				strokeColor: "#F7464A",
+				pointColor: "#F7464A",
+				pointStrokeColor: "#fff",
+				pointHighlightFill: "#fff",
+				pointHighlightStroke: "rgba(0,0,0,1)",
+				data: []
+			}
+		  ]
+		};
+		for ( var i in historyData ) {
+			data.datasets[0].data.push(Number(historyData[i].hum));
+			data.labels.push(i);
+			chartIndex++;
+		}
+		var ctx = document.getElementById("chart2").getContext("2d");
+		new Chart(ctx).Line(data, {animation: false});
+
+		var data = {
+			labels: [],
+			datasets: [
+			{
+				label: "Brightness",
+				fillColor: "rgba(253,180,92,0.2)",
+				strokeColor: "#FDB45C",
+				pointColor: "#FDB45C",
+				pointStrokeColor: "#fff",
+				pointHighlightFill: "#fff",
+				pointHighlightStroke: "rgba(0,0,0,1)",
+				data: []
+			}
+		  ]
+		};
+		for ( var i in historyData ) {
+			data.datasets[0].data.push(Number(historyData[i].lum?historyData[i].lum[0]:0));
+			data.labels.push(i);
+			chartIndex++;
+		}
+		var ctx = document.getElementById("chart3").getContext("2d");
+		new Chart(ctx).Line(data, {animation: false});
+   }
+
+  </script>
+ </body>
+</html>
