@@ -18,7 +18,7 @@ exports.maxBuddyAdd = {
 
     var new_raw = {
       type: "Max!Buddy",
-      packet: JSON.stringify(connection.params),
+      packet: JSON.stringify({body: connection.rawConnection.params.body}),
       time: connection.params.time || Math.floor((new Date().getTime())/1000)
     };
 

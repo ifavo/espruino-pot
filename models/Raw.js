@@ -6,7 +6,7 @@ module.exports = function(sequelize, DataTypes) {
       autoIncrement: true
     },
     type: DataTypes.STRING,
-    packet: DataTypes.STRING,
+    packet: DataTypes.BLOB,
     time: DataTypes.INTEGER
   });
 };
