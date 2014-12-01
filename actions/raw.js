@@ -89,7 +89,46 @@ exports.rawGet = {
 };
 
 
+exports.rawTimeframe = {
+  name: 'raw/timeframe',
+  description: 'get list of raw datasets',
+  blockedConnectionTypes: [],
+  outputExample: {},
+  matchExtensionMimeType: false,
+  version: 1.0,
+  toDocument: true,
 
+  inputs: {
+    required: ['from', 'to'],
+    optional: []
+  },
+
+  run: function(api, connection, next) {
+		api.models.Raw
+			.findAll({where: {time: {between: [connection.params.from, connection.params.to]}}})
+			.then(function(raw) {
+				if (!raw) {
+					getError("raw data not found");
+					connection.rawConnection.responseHttpCode = 404;
+					return next(connection, true);
+				}
+				return raw;
+		})
+		.then(getSuccess, getError)
+		.finally(function() {
+			next(connection, true);
+		});
+
+		function getSuccess(raw) {
+			connection.response.raw = raw;
+		}
+
+		function getError(err) {
+			api.log('Could not get raw timeframe: ' + connection.params.from + ' to ' + connection.params.to, 'error');
+			connection.error = err;
+		}
+  }
+};
 
 exports.rawCount = {
   name: 'raw/count',
