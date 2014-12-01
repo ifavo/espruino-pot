@@ -4,24 +4,32 @@
  <body>
   <div class="container-fluid">
    <div class="row">
-    <b>Temperature</b>
-    <div class="col-md-12"><canvas id="chart1" width="800" height="400"></canvas></div>
-   </div>
-   <div class="row">
-    <b>Humidity (%)</b>
-    <div class="col-md-12"><canvas id="chart2" width="800" height="400"></canvas></div>
+    <b>Temperature & Humidity (%)</b>
+    <div class="col-12"><div id="chartTmp" class="c3"></div></div>
    </div>
    <div class="row">
     <b>Brightness (Lux)</b>
-    <div class="col-md-12"><canvas id="chart3" width="800" height="400"></canvas></div>
+    <div class="col-12"><div id="chartLum" class="c3"></div></div>
    </div>
   </div>
-
+  
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/css/c3.css" rel="stylesheet">
+  
+  <style>
+   body {
+    padding: 25px;
+   }
+  </style>
+
+
   <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
   <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
-  <script src="//cdn.bootcss.com/Chart.js/0.2.0/Chart.js"></script>
+  <script src="//rawgit.com/kvz/phpjs/master/functions/datetime/date.js"></script>
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="/javascript/c3.js"></script>
   <script>
+
 	var QueryString = function () {
 	  // This function is anonymous, is executed immediately and 
 	  // the return value is assigned to QueryString!
@@ -44,120 +52,109 @@
 	  } 
 		return query_string;
 	} ();
-	
-	var historyLen = 0;
-	var historyData = [];
-	var historyId = 0;
-	var historyMaxData = 1000;
+
 	var potServer = QueryString.server || "";
+	var potTimeframe = QueryString.days || 1;
 
+	var charts = {};
 
-	$.getJSON(potServer + "/api/raw/count", function (res) {
-		if ( res && res.count) {
-			historyLen = res.count;
-			historyId = (historyLen > historyMaxData) ? historyLen - historyMaxData : 0;
-			fetchHistory();
+	function getData () {
+		$.getJSON(potServer + '/api/raw/timeframe', {from: Math.floor(new Date().getTime()/1000) - (86400*potTimeframe), to: Math.floor(new Date().getTime()/1000)}, updateChartData);
+	}
+	
+	function updateChartData(res) {
+		if ( !res || !res.raw ) {
+			return;
 		}
-	});
 
-	function fetchHistory () {
-   		historyId++;
-		$.getJSON(potServer + "/api/raw/get", {id: historyId}, function (res) {
-			if ( res && res.raw ) {
-				try {
-					var data = JSON.parse(res.raw.packet);
+		var labels = ['x'];
+		var tmp = ['Temperature'];
+		var hum = ['Humidity'];
+		var lum = ['Luminosity'];
+		for ( var i in res.raw ) {
+			try {
+				var data = JSON.parse(res.raw[i].packet);
+				
+				if ( !res.raw[i].time ) {
+					continue;
+				}
+				labels.push(new Date(res.raw[i].time*1000));
+				tmp.push(Number(data.tmp||0));
+				hum.push(Number(data.hum||0));
 
-					historyData.push(data);
-					if ( historyId >= historyLen ) {
-						renderData();
+				var lumVal = data.lum[0]?data.lum[0]:data.lum[16]/16;
+				lum.push(lumVal);
+			}
+			catch (e) {
+			}
+		}
+		charts.tmp.load({columns: [labels, tmp, hum]});
+		charts.lum.load({columns: [labels, lum]});
+	}
+	
+	function generateCharts () {
+		charts.tmp = c3.generate({
+			bindto: '#chartTmp',
+			data: {
+				x: 'x',
+				columns: [],
+				axes: {
+		            Temperature: 'y',
+        		    Humidity: 'y2'
+		        },
+				types: {
+					Temperature: 'area',
+					Humidity: 'area-spline'
+				}
+			},
+			point: {
+				show: false
+			},
+			axis: {
+				x: {
+					type: 'timeseries',
+					tick: {
+						format: '%Y-%m-%d %H:%i'
 					}
-					else {
-						renderData()
-						fetchHistory();
+				},
+				y2: {
+					show: true
+				}
+			},
+			transition: {
+				duration: 5000
+		    }
+		});
+
+		charts.lum = c3.generate({
+			bindto: '#chartLum',
+			data: {
+				x: 'x',
+				columns: [],
+				types: {
+					Luminosity: 'area'
+				}
+			},
+			point: {
+				show: false
+			},
+			axis: {
+				x: {
+					type: 'timeseries',
+					tick: {
+						format: '%Y-%m-%d %H:%i'
 					}
 				}
-				catch (e) {
-					fetchHistory();
-				}
-
-			}
-			else {
-				fetchHistory();
-			}
+			},
+			transition: {
+				duration: 5000
+		    }
 		});
 	}
-   
-	var chartIndex = 0;
-	function renderData() {
-		var data = {
-			labels: [],
-			datasets: [
-			{
-				label: "Temperature",
-				fillColor: "rgba(151,187,205,0.2)",
-				strokeColor: "rgba(151,187,205,1)",
-				pointColor: "rgba(151,187,205,1)",
-				pointStrokeColor: "#fff",
-				pointHighlightFill: "#fff",
-				pointHighlightStroke: "rgba(151,187,205,1)",
-				data: []
-			}
-		  ]
-		};
-		for ( var i in historyData ) {
-			data.datasets[0].data.push(Number(historyData[i].tmp));
-			data.labels.push(i);
-			chartIndex++;
-		}
-		var ctx = document.getElementById("chart1").getContext("2d");
-		new Chart(ctx).Line(data, {animation: false, showTooltips: true,});
+	
+	generateCharts();
+	getData();
 
-		var data = {
-			labels: [],
-			datasets: [
-			{
-				label: "Humidity",
-				fillColor: "rgba(247,70,74,0.2)",
-				strokeColor: "#F7464A",
-				pointColor: "#F7464A",
-				pointStrokeColor: "#fff",
-				pointHighlightFill: "#fff",
-				pointHighlightStroke: "rgba(0,0,0,1)",
-				data: []
-			}
-		  ]
-		};
-		for ( var i in historyData ) {
-			data.datasets[0].data.push(Number(historyData[i].hum));
-			data.labels.push(i);
-			chartIndex++;
-		}
-		var ctx = document.getElementById("chart2").getContext("2d");
-		new Chart(ctx).Line(data, {animation: false});
-
-		var data = {
-			labels: [],
-			datasets: [
-			{
-				label: "Brightness",
-				fillColor: "rgba(253,180,92,0.2)",
-				strokeColor: "#FDB45C",
-				pointColor: "#FDB45C",
-				pointStrokeColor: "#fff",
-				pointHighlightFill: "#fff",
-				pointHighlightStroke: "rgba(0,0,0,1)",
-				data: []
-			}
-		  ]
-		};
-		for ( var i in historyData ) {
-			data.datasets[0].data.push(Number(historyData[i].lum?historyData[i].lum[0]:0));
-			data.labels.push(i);
-			chartIndex++;
-		}
-		var ctx = document.getElementById("chart3").getContext("2d");
-		new Chart(ctx).Line(data, {animation: false});
-   }
 
   </script>
  </body>
