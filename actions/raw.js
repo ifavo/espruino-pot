@@ -15,6 +15,7 @@ exports.rawAdd = {
   run: function(api, connection, next) {
     
     var new_raw = {
+      type: "raw",
       packet: connection.params.packet,
       time: connection.params.time || Math.floor((new Date().getTime())/1000)
     };
