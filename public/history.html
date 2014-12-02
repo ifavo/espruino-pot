@@ -59,7 +59,7 @@
 	var charts = {};
 
 	function getData () {
-		$.getJSON(potServer + '/api/raw/timeframe', {from: Math.floor(new Date().getTime()/1000) - (86400*potTimeframe), to: Math.floor(new Date().getTime()/1000)}, updateChartData);
+		$.getJSON(potServer + '/api/weather/timeframe', {from: Math.floor(new Date().getTime()/1000) - (86400*potTimeframe), to: Math.floor(new Date().getTime()/1000)}, updateChartData);
 	}
 	
 	function updateChartData(res) {
@@ -71,19 +71,13 @@
 		var tmp = ['Temperature'];
 		var hum = ['Humidity'];
 		var lum = ['Luminosity'];
-		for ( var i in res.raw ) {
+		while ( res.raw.length ) {
+			var data = res.raw.shift();
 			try {
-				var data = JSON.parse(res.raw[i].packet);
-				
-				if ( !res.raw[i].time ) {
-					continue;
-				}
-				labels.push(new Date(res.raw[i].time*1000));
-				tmp.push(Number(data.tmp||0));
-				hum.push(Number(data.hum||0));
-
-				var lumVal = data.lum[0]?data.lum[0]:data.lum[16]/16;
-				lum.push(lumVal);
+				labels.push(new Date(data.time*1000));
+				tmp.push(Number(data.temp||0));
+				hum.push(Number(data.humidity||0));
+				lum.push(Number(data.light||0));
 			}
 			catch (e) {
 			}

@@ -9,5 +9,12 @@ module.exports = function(sequelize, DataTypes) {
     humidity: DataTypes.INTEGER,
     light: DataTypes.INTEGER,
     time: DataTypes.INTEGER
+  }, {
+    indexes: [
+    	{
+    		name: "weatherTime",
+    		fields: ['time']
+    	}
+    ]
   });
 };
