@@ -29,7 +29,7 @@ exports.weatherTimeframe = {
 		});
 
 		function getSuccess(raw) {
-			connection.response.raw = raw;
+			connection.response.weather = raw;
 		}
 
 		function getError(err) {

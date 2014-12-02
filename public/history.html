@@ -63,7 +63,7 @@
 	}
 	
 	function updateChartData(res) {
-		if ( !res || !res.raw ) {
+		if ( !res || !res.weather ) {
 			return;
 		}
 
@@ -71,8 +71,8 @@
 		var tmp = ['Temperature'];
 		var hum = ['Humidity'];
 		var lum = ['Luminosity'];
-		while ( res.raw.length ) {
-			var data = res.raw.shift();
+		while ( res.weather.length ) {
+			var data = res.weather.shift();
 			try {
 				labels.push(new Date(data.time*1000));
 				tmp.push(Number(data.temp||0));
