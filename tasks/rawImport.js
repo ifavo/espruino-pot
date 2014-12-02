@@ -27,7 +27,7 @@ exports.task = {
 					  raw.json = JSON.parse(raw.packet);
 					}
 					catch (e) {
-						return raw.destroy();
+						return raw.destroy().success(handleRawData);
 					}
 
 					// Weather Import
@@ -51,13 +51,16 @@ exports.task = {
 						}
 						
 						// create weather dataset
-						api.models.Weather
+						return api.models.Weather
 						  .create(weather)
 						  .finally(function() {
-						  	raw.destroy();
-						  	handleRawData();
+						  	raw.destroy().success(handleRawData);
 						  });
 					}
+
+					// no data to import? delete the dataset anyways
+					return raw.destroy().success(handleRawData);
+
 			}, function () {
 				next();
 			});
