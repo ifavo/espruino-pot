@@ -1,0 +1,209 @@
+<!DOCTYPE>
+<html>
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <body>
+  <div class="container">
+   <div class="row">
+    <div class="col-md-2"><b>Temperature</b></div>
+    <div class="col-md-1"><span id="temperature"></span>&deg;C</div>
+    <div class="col-md-4"><div id="temperature-chart" class="chart"></div></div>
+   </div>
+   <div class="row">
+    <div class="col-md-2"><b>Humidity</b></div>
+    <div class="col-md-1"><span id="humidity"></span>%</div>
+    <div class="col-md-4"><div id="humidity-chart" class="chart"></div></div>
+   </div>
+   <div class="row">
+    <div class="col-md-2"><b>Light</b></div>
+    <div class="col-md-1"><span id="light"></span>lux</div>
+    <div class="col-md-4"><div id="light-chart" class="chart"</div></div>
+   </div>
+  </div>
+  
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/css/c3.css" rel="stylesheet">
+  
+  <style>
+   body {
+    padding: 25px;
+   }
+   
+   .chart {
+		width: 128px;
+		height: 64px;
+   	}
+  </style>
+
+
+  <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+  <script src="//rawgit.com/kvz/phpjs/master/functions/datetime/date.js"></script>
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="/javascript/c3.js"></script>
+  <script>
+
+	var QueryString = function () {
+	  // This function is anonymous, is executed immediately and 
+	  // the return value is assigned to QueryString!
+	  var query_string = {};
+	  var query = window.location.search.substring(1);
+	  var vars = query.split("&");
+	  for (var i=0;i<vars.length;i++) {
+		var pair = vars[i].split("=");
+			// If first entry with this name
+		if (typeof query_string[pair[0]] === "undefined") {
+		  query_string[pair[0]] = pair[1];
+			// If second entry with this name
+		} else if (typeof query_string[pair[0]] === "string") {
+		  var arr = [ query_string[pair[0]], pair[1] ];
+		  query_string[pair[0]] = arr;
+			// If third or later entry with this name
+		} else {
+		  query_string[pair[0]].push(pair[1]);
+		}
+	  } 
+		return query_string;
+	} ();
+
+	var potServer = QueryString.server || "";
+	var potTimeframe = QueryString.days || 0.25;
+
+	var charts = {};
+
+	function getData () {
+		$.getJSON(potServer + '/api/weather/status', updateStatusData);
+		$.getJSON(potServer + '/api/weather/timeframe', {from: Math.floor(new Date().getTime()/1000) - (86400*potTimeframe), to: Math.floor(new Date().getTime()/1000)}, updateChartData);
+	}
+	
+	function updateStatusData(res) {
+		if ( !res || !res.weather ) {
+			return;
+		}
+
+		$('#temperature').text(res.weather.temp);
+		$('#humidity').text(res.weather.humidity);
+		$('#light').text(res.weather.light);
+	}
+
+	function updateChartData(res) {
+		if ( !res || !res.weather ) {
+			return;
+		}
+
+		var labels = ['x'];
+		var temperature = ['Temperature'];
+		var humidity = ['Humidity'];
+		var light = ['Light'];
+		while ( res.weather.length ) {
+			var data = res.weather.shift();
+			try {
+				labels.push(new Date(data.time*1000));
+				temperature.push(Number(data.temp||0));
+				humidity.push(Number(data.humidity||0));
+				light.push(Number(data.light||0));
+			}
+			catch (e) {
+			}
+		}
+		charts.temperature.load({columns: [labels, temperature]});
+		charts.humidity.load({columns: [labels, humidity]});
+		charts.light.load({columns: [labels, light]});
+	}
+
+	var charts = {};	
+	function generateCharts () {
+		charts.temperature = c3.generate({
+			bindto: '#temperature-chart',
+			data: {
+				x: 'x',
+				columns: [],
+				types: {
+					Temperature: 'area-spline'
+				}
+			},
+			point: {
+				show: false
+			},
+			axis: {
+				x: {
+					type: 'timeseries',
+					tick: {
+						format: '%Y-%m-%d %H:%m'
+					},
+					show: false
+				},
+				y: {
+					show: false
+				}
+			},
+			legend: {
+				hide: ['Temperature']
+			}
+		});
+
+		charts.humidity = c3.generate({
+			bindto: '#humidity-chart',
+			data: {
+				x: 'x',
+				columns: [],
+				types: {
+					Humidity: 'area-spline'
+				}
+			},
+			point: {
+				show: false
+			},
+			axis: {
+				x: {
+					type: 'timeseries',
+					tick: {
+						format: '%Y-%m-%d %H:%m'
+					},
+					show: false
+				},
+				y: {
+					show: false
+				}
+			},
+			legend: {
+				hide: ['Humidity']
+			}
+		});
+
+		charts.light = c3.generate({
+			bindto: '#light-chart',
+			data: {
+				x: 'x',
+				columns: [],
+				types: {
+					Light: 'area-spline'
+				}
+			},
+			point: {
+				show: false
+			},
+			axis: {
+				x: {
+					type: 'timeseries',
+					tick: {
+						format: '%Y-%m-%d %H:%m'
+					},
+					show: false
+				},
+				y: {
+					show: false
+				}
+			},
+			legend: {
+				hide: ['Light']
+			}
+		});
+	}
+
+	generateCharts();
+	getData();
+	setInterval(getData, 1*60*1000);
+
+  </script>
+ </body>
+</html>
